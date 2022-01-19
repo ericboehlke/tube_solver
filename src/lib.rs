@@ -7,36 +7,24 @@ pub enum Color {
 
 /// Colors start from bottom to top
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Tube {
-    a: Color,
-    b: Color,
-    c: Color,
-    d: Color,
-}
+pub struct Tube (pub Color, pub Color, pub Color, pub Color);
 
 impl Tube {
-    /// Tube constructor
-    ///
-    /// The colors start from the bottom to the top
-    pub fn new(bot: Color, low: Color, hii: Color, top: Color) -> Self {
-        Tube { a:bot, b:low, c:hii, d:top }
-    }
-
     /// Returns true if all of the colors in the tube are empty
     ///
     /// ```
     /// use tubes::Color;
     /// use tubes::Tube;
-    /// let empty_tube = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-    /// let half_tube = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+    /// let empty_tube = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+    /// let half_tube = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
     /// assert_eq!(empty_tube.isempty(), true);
     /// assert_eq!(half_tube.isempty(), false);
     /// ```
     pub fn isempty(&self) -> bool {
-        if self.a == Color::Empty &&
-            self.b == Color::Empty &&
-            self.c == Color::Empty &&
-            self.d == Color::Empty {
+        if self.0 == Color::Empty &&
+            self.1 == Color::Empty &&
+            self.2 == Color::Empty &&
+            self.3 == Color::Empty {
                 return true;
         } else {
             return false;
@@ -68,8 +56,8 @@ mod transfer_tests {
 
     #[test]
     fn test_empty_transfer() {
-        let tube1 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-        let tube2 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube1 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
         let transfer_success = transfer_result.0;
         assert_eq!(transfer_success, false);
@@ -77,8 +65,8 @@ mod transfer_tests {
 
     #[test]
     fn test_half_to_empty_transfer() {
-        let tube1 = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
-        let tube2 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube1 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
         assert_eq!(transfer_result.0, true);
         assert_eq!(transfer_result.1, tube2);
@@ -87,8 +75,8 @@ mod transfer_tests {
 
     #[test]
     fn test_empty_to_half_transfer() {
-        let tube1 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-        let tube2 = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube1 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube2 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
         assert_eq!(transfer_result.0, false);
     }
