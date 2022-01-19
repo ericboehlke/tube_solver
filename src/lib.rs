@@ -32,8 +32,11 @@ impl Tube {
     }
 }
 
-/// Success, Send Tube, Recieve Tube
-struct TubeTransferResult (bool, Tube, Tube);
+struct TubeTransferResult {
+    success: bool, 
+    send_tube: Tube, 
+    recieve_tube: Tube
+}
 
 /// Transfers liquid from the send tube to the recieve tube following the rules of the game
 ///
@@ -44,9 +47,9 @@ struct TubeTransferResult (bool, Tube, Tube);
 /// will be false and no guarentees are made to the content of the Tubes
 fn transfer(send: Tube, recieve: Tube) -> TubeTransferResult {
     if send.isempty() {
-        return TubeTransferResult(false, send, recieve);
+        return TubeTransferResult { success: false, send_tube: send, recieve_tube: recieve };
     } else {
-        return TubeTransferResult(true, recieve, send);
+        return TubeTransferResult { success: true, send_tube: recieve, recieve_tube: send };
     }
 }
 
@@ -59,7 +62,7 @@ mod transfer_tests {
         let tube1 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
-        let transfer_success = transfer_result.0;
+        let transfer_success = transfer_result.success;
         assert_eq!(transfer_success, false);
     }
 
@@ -68,9 +71,9 @@ mod transfer_tests {
         let tube1 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
         let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
-        assert_eq!(transfer_result.0, true);
-        assert_eq!(transfer_result.1, tube2);
-        assert_eq!(transfer_result.2, tube1);
+        assert_eq!(transfer_result.success, true);
+        assert_eq!(transfer_result.send_tube, tube2);
+        assert_eq!(transfer_result.recieve_tube, tube1);
     }
 
     #[test]
@@ -78,7 +81,22 @@ mod transfer_tests {
         let tube1 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let tube2 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
-        assert_eq!(transfer_result.0, false);
+        assert_eq!(transfer_result.success, false);
     }
 }
 
+/// Returns the neighboring states that can be reached with one transfer
+///
+/// Given a state of tubes this function returns all of the states that can be reached
+/// by transfering the contents of one tube into another according to the rules of the 
+/// transfer function.
+pub fn neighbors(state: Vec<Tube>) -> Vec<Vec<Tube>> {
+    for send_tube in state.iter() {
+        for recv_tube in state.iter() {
+            // Cannot transfer a tube into itself
+            if send_tube == recv_tube { continue };
+            println!("Send tube {:?}, Recv tube {:?}", send_tube, recv_tube);
+        }
+    }
+    return vec![state];
+}
