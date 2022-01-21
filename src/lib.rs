@@ -2,6 +2,7 @@
 pub enum Color {
     Empty,
     Orange,
+    Blue,
 }
 
 
@@ -83,6 +84,19 @@ mod transfer_tests {
         let transfer_result = transfer(tube1, tube2);
         assert_eq!(transfer_result.success, false);
     }
+
+    #[test]
+    #[ignore]
+    fn test_orange_to_blue_transfer() {
+        let tube1 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube2 = Tube(Color::Blue, Color::Blue, Color::Empty, Color::Empty);
+        let transfer_result = transfer(tube1, tube2);
+        let ee_tube = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let bo_tube = Tube(Color::Blue, Color::Blue, Color::Orange, Color::Orange);
+        assert_eq!(transfer_result.success, true);
+        assert_eq!(transfer_result.send_tube, ee_tube);
+        assert_eq!(transfer_result.recieve_tube, bo_tube);
+    }
 }
 
 /// Returns the neighboring states that can be reached with one transfer
@@ -91,12 +105,57 @@ mod transfer_tests {
 /// by transfering the contents of one tube into another according to the rules of the 
 /// transfer function.
 pub fn neighbors(state: Vec<Tube>) -> Vec<Vec<Tube>> {
-    for send_tube in state.iter() {
-        for recv_tube in state.iter() {
+    let mut neighboring_states = Vec::new();
+    for (si, send_tube) in state.iter().enumerate() {
+        for (ri, recv_tube) in state.iter().enumerate() {
             // Cannot transfer a tube into itself
-            if send_tube == recv_tube { continue };
-            println!("Send tube {:?}, Recv tube {:?}", send_tube, recv_tube);
+            if si == ri { continue };
+            let transfer_result = transfer(*send_tube, *recv_tube);
+            if transfer_result.success {
+                let mut neighboring_state = state.clone();
+                neighboring_state[si] = transfer_result.send_tube;
+                neighboring_state[ri] = transfer_result.recieve_tube;
+                neighboring_states.push(neighboring_state);
+            }
         }
     }
-    return vec![state];
+    return neighboring_states
+}
+
+#[cfg(test)]
+mod neighbors_tests {
+    use super::*;
+
+    #[test]
+    fn test_half_and_empty_neighbors() {
+        let tube1 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let state = vec![tube1, tube2];
+        let neighboring_states = neighbors(state);
+        let expected_state = vec![tube2, tube1];
+        assert_eq!(neighboring_states.len(), 1);
+        assert!(neighboring_states.contains(&expected_state));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_neighbors_3_tubes() {
+        let oe_tube = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let be_tube = Tube(Color::Blue, Color::Blue, Color::Empty, Color::Empty);
+        let ee_tube = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let state = vec![oe_tube, be_tube, ee_tube];
+        let neighboring_states = neighbors(state);
+        let bo_tube = Tube(Color::Blue, Color::Blue, Color::Orange, Color::Orange);
+        let ob_tube = Tube(Color::Orange, Color::Orange, Color::Blue, Color::Blue);
+        let expected_state1 = vec![ee_tube, bo_tube, ee_tube];
+        let expected_state2 = vec![ee_tube, be_tube, oe_tube];
+        let expected_state3 = vec![ob_tube, ee_tube, ee_tube];
+        let expected_state4 = vec![oe_tube, ee_tube, be_tube];
+        println!("{:?}", neighboring_states);
+        assert_eq!(neighboring_states.len(), 4);
+        assert!(neighboring_states.contains(&expected_state1));
+        assert!(neighboring_states.contains(&expected_state2));
+        assert!(neighboring_states.contains(&expected_state3));
+        assert!(neighboring_states.contains(&expected_state4));
+    }
 }
