@@ -31,7 +31,7 @@ impl Tube {
     pub fn new(layer0: Color, layer1: Color, layer2: Color, layer3: Color) -> Tube {
         let new_tube = Tube { layers: [layer3, layer2, layer1, layer0] };
         if !new_tube.checkrep() {
-            println!("invalid tube");
+            panic!("invalid tube");
         }
         return new_tube;
     }
@@ -50,16 +50,30 @@ impl Tube {
         return true
     }
 
+    /// Returns the volume and color of the top color of liquid
+    ///
+    /// ```
+    /// use tubes::Color;
+    /// use tubes::Tube;
+    /// let tube1 = Tube::new(Color::Orange, Color::Blue, Color::Orange, Color::Blue);
+    /// let tube2 = Tube::new(Color::Orange, Color::Orange, Color::Blue, Color::Blue);
+    /// assert_eq!(tube1.topcolor(), (1, Color::Blue));
+    /// assert_eq!(tube2.topcolor(), (2, Color::Blue));
+    /// ```
     pub fn topcolor(&self) -> (i32, Color) {
         let mut top_color = Color::Empty;
         let mut color_count = 0;
         for layer in self.layers {
             if layer != Color::Empty {
-                if layer == top_color {
-                    color_count += 1;
-                } else {
+                if top_color == Color::Empty {
                     top_color = layer;
                     color_count += 1;
+                } else {
+                    if layer == top_color {
+                        color_count += 1;
+                    } else {
+                        break;
+                    }
                 }
             }
         }
@@ -108,7 +122,7 @@ impl Tube {
     }
 }
 
-const EMPTY_TUBE: Tube = Tube { layers: [Color::Empty, Color::Empty, Color::Empty, Color::Empty] };
+pub const EMPTY_TUBE: Tube = Tube { layers: [Color::Empty, Color::Empty, Color::Empty, Color::Empty] };
 
 struct TubeTransferResult {
     success: bool, 
@@ -200,6 +214,23 @@ impl TubeState {
             }
         }
         return true;
+    }
+}
+
+#[cfg(test)]
+mod tube_state_test {
+    use super::*;
+
+    #[test]
+    fn test_level_2_issolved() {
+        let tube1 = Tube::new(Color::Blue, Color::Orange, Color::Blue, Color::Orange);
+        let tube2 = Tube::new(Color::Orange, Color::Blue, Color::Orange, Color::Blue);
+        let tube3 = EMPTY_TUBE;
+        let state = TubeState { tubes: vec![tube1, tube2, tube3] };
+        assert!(!tube1.issolved());
+        assert!(!tube2.issolved());
+        assert!(tube3.issolved());
+        assert!(!state.issolved());
     }
 }
 
