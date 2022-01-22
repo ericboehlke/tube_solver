@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Color {
     Empty,
@@ -74,6 +76,12 @@ impl Tube {
             }
         }
         return empty_count;
+    }
+
+    pub fn issolved(&self) -> bool {
+        let empty_count = self.howempty();
+        let (color_count, _top_color) = self.topcolor();
+        return empty_count == 4 || color_count == 4;
     }
 
     pub fn pourtube(&self) -> Tube {
@@ -173,23 +181,45 @@ mod transfer_tests {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct TransferAction {
+    send_idx: i32,
+    recv_idx: i32,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TubeState {
+    pub tubes: Vec<Tube>,
+}
+
+impl TubeState {
+    pub fn issolved(&self) -> bool {
+        for tube in &self.tubes {
+            if !tube.issolved() {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 /// Returns the neighboring states that can be reached with one transfer
 ///
 /// Given a state of tubes this function returns all of the states that can be reached
 /// by transfering the contents of one tube into another according to the rules of the 
 /// transfer function.
-pub fn neighbors(state: Vec<Tube>) -> Vec<Vec<Tube>> {
+pub fn neighbors(state: &TubeState) -> Vec<(TransferAction, TubeState)> {
     let mut neighboring_states = Vec::new();
-    for (si, send_tube) in state.iter().enumerate() {
-        for (ri, recv_tube) in state.iter().enumerate() {
+    for (si, send_tube) in state.tubes.iter().enumerate() {
+        for (ri, recv_tube) in state.tubes.iter().enumerate() {
             // Cannot transfer a tube into itself
             if si == ri { continue };
             let transfer_result = transfer(*send_tube, *recv_tube);
             if transfer_result.success {
                 let mut neighboring_state = state.clone();
-                neighboring_state[si] = transfer_result.send_tube;
-                neighboring_state[ri] = transfer_result.recieve_tube;
-                neighboring_states.push(neighboring_state);
+                neighboring_state.tubes[si] = transfer_result.send_tube;
+                neighboring_state.tubes[ri] = transfer_result.recieve_tube;
+                neighboring_states.push((TransferAction { send_idx: si as i32, recv_idx: ri as i32 }, neighboring_state));
             }
         }
     }
@@ -204,11 +234,12 @@ mod neighbors_tests {
     fn test_half_and_empty_neighbors() {
         let tube1 = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
         let tube2 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-        let state = vec![tube1, tube2];
-        let neighboring_states = neighbors(state);
-        let expected_state = vec![tube2, tube1];
+        let state = TubeState { tubes: vec![tube1, tube2] };
+        let neighboring_states = neighbors(&state);
+        let expected_state = TubeState { tubes: vec![tube2, tube1] };
+        let transfer_action = TransferAction { send_idx: 0, recv_idx: 1 };
         assert_eq!(neighboring_states.len(), 1);
-        assert!(neighboring_states.contains(&expected_state));
+        assert!(neighboring_states.contains(&(transfer_action, expected_state)));
     }
 
     #[test]
@@ -216,19 +247,70 @@ mod neighbors_tests {
         let oe_tube = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
         let be_tube = Tube::new(Color::Blue, Color::Blue, Color::Empty, Color::Empty);
         let ee_tube = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-        let state = vec![oe_tube, be_tube, ee_tube];
-        let neighboring_states = neighbors(state);
+        let state = TubeState { tubes: vec![oe_tube, be_tube, ee_tube] };
+        let neighboring_states = neighbors(&state);
         let bo_tube = Tube::new(Color::Blue, Color::Blue, Color::Orange, Color::Orange);
         let ob_tube = Tube::new(Color::Orange, Color::Orange, Color::Blue, Color::Blue);
-        let expected_state1 = vec![ee_tube, bo_tube, ee_tube];
-        let expected_state2 = vec![ee_tube, be_tube, oe_tube];
-        let expected_state3 = vec![ob_tube, ee_tube, ee_tube];
-        let expected_state4 = vec![oe_tube, ee_tube, be_tube];
+        let expected_state1 = TubeState { tubes: vec![ee_tube, bo_tube, ee_tube] };
+        let expected_state2 = TubeState { tubes: vec![ee_tube, be_tube, oe_tube] };
+        let expected_state3 = TubeState { tubes: vec![ob_tube, ee_tube, ee_tube] };
+        let expected_state4 = TubeState { tubes: vec![oe_tube, ee_tube, be_tube] };
+        let transfer_action1 = TransferAction { send_idx: 0, recv_idx: 1 };
+        let transfer_action2 = TransferAction { send_idx: 0, recv_idx: 2 };
+        let transfer_action3 = TransferAction { send_idx: 1, recv_idx: 0 };
+        let transfer_action4 = TransferAction { send_idx: 1, recv_idx: 2 };
         println!("{:?}", neighboring_states);
         assert_eq!(neighboring_states.len(), 4);
-        assert!(neighboring_states.contains(&expected_state1));
-        assert!(neighboring_states.contains(&expected_state2));
-        assert!(neighboring_states.contains(&expected_state3));
-        assert!(neighboring_states.contains(&expected_state4));
+        assert!(neighboring_states.contains(&(transfer_action1, expected_state1)));
+        assert!(neighboring_states.contains(&(transfer_action2, expected_state2)));
+        assert!(neighboring_states.contains(&(transfer_action3, expected_state3)));
+        assert!(neighboring_states.contains(&(transfer_action4, expected_state4)));
+    }
+}
+
+pub struct TubeStateNode {
+    actions: Vec<TransferAction>,
+    state: TubeState,
+}
+
+/// Solves the game of tubes using bfs
+pub fn solve_bfs(initial_state: &TubeState) -> Vec<TransferAction> {
+    let mut explored: Vec<TubeState> = Vec::new();
+    let mut q: VecDeque<TubeStateNode> = VecDeque::new();
+    explored.push(initial_state.clone());
+    q.push_back(TubeStateNode { actions: vec![TransferAction { send_idx: 0, recv_idx: 0 }], 
+                                state: initial_state.clone() });
+    let mut solution_state = None;
+    while !q.is_empty() {
+        let v = q.pop_front();
+        match v {
+            Some(y) => { 
+                if y.state.issolved() {
+                    solution_state = Some(y);
+                    break;        
+                } else {
+                    for (action, state) in neighbors(&y.state) {
+                        if !explored.contains(&&state) {
+                            explored.push(state.clone());
+                            let mut actions = y.actions.clone();
+                            actions.push(action);
+                            q.push_back(TubeStateNode { actions: actions, 
+                                                        state: state.clone() });
+                        }
+                    }
+                }
+            },
+            None => { break }
+        }
+    }
+    match solution_state {
+        None => {
+            return vec![TransferAction {send_idx: 0, recv_idx: 0}];
+        },
+        Some(solution) => {
+            let mut solution_actions = solution.actions.clone();
+            solution_actions.remove(0);
+            return solution_actions;
+        }
     }
 }
