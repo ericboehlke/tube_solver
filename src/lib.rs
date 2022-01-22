@@ -5,10 +5,10 @@ pub enum Color {
     Blue,
 }
 
-
-/// Colors start from bottom to top
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Tube (pub Color, pub Color, pub Color, pub Color);
+pub struct Tube {
+    layers: [Color; 4]
+}
 
 impl Tube {
     /// Returns true if all of the colors in the tube are empty
@@ -16,22 +16,91 @@ impl Tube {
     /// ```
     /// use tubes::Color;
     /// use tubes::Tube;
-    /// let empty_tube = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-    /// let half_tube = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+    /// let empty_tube = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+    /// let half_tube = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
     /// assert_eq!(empty_tube.isempty(), true);
     /// assert_eq!(half_tube.isempty(), false);
     /// ```
     pub fn isempty(&self) -> bool {
-        if self.0 == Color::Empty &&
-            self.1 == Color::Empty &&
-            self.2 == Color::Empty &&
-            self.3 == Color::Empty {
-                return true;
-        } else {
-            return false;
+        return 4 == self.howempty();
+    }
+
+    
+    pub fn new(layer0: Color, layer1: Color, layer2: Color, layer3: Color) -> Tube {
+        let new_tube = Tube { layers: [layer3, layer2, layer1, layer0] };
+        if !new_tube.checkrep() {
+            println!("invalid tube");
         }
+        return new_tube;
+    }
+
+    fn checkrep(&self) -> bool {
+        let mut non_empty_flag = false;
+        for layer in self.layers {
+            if layer != Color::Empty {
+                non_empty_flag = true;
+            } else {
+                if non_empty_flag {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    pub fn topcolor(&self) -> (i32, Color) {
+        let mut top_color = Color::Empty;
+        let mut color_count = 0;
+        for layer in self.layers {
+            if layer != Color::Empty {
+                if layer == top_color {
+                    color_count += 1;
+                } else {
+                    top_color = layer;
+                    color_count += 1;
+                }
+            }
+        }
+        return (color_count, top_color);
+    }
+
+    pub fn howempty(&self) -> i32 {
+        let mut empty_count = 0;
+        for layer in self.layers {
+            if layer == Color::Empty {
+                empty_count += 1;
+            } else {
+                break;
+            }
+        }
+        return empty_count;
+    }
+
+    pub fn pourtube(&self) -> Tube {
+        let mut new_tube = *self;
+        let (color_count, _color) = self.topcolor();
+        let empty_count = self.howempty();
+        for i in empty_count..empty_count+color_count {
+            new_tube.layers[i as usize] = Color::Empty;
+        }
+        return new_tube;
+    }
+
+    pub fn addcolor(&self, color_count: i32, color: Color) -> (bool, Tube) {
+        let empty_count = self.howempty();
+        // Fail because recieve tube doesn't have enough empty space
+        if color_count > empty_count {
+            return (false, EMPTY_TUBE);
+        }
+        let mut new_tube = *self;
+        for i in empty_count-color_count..empty_count {
+            new_tube.layers[i as usize] = color;
+        }
+        return (true, new_tube);
     }
 }
+
+const EMPTY_TUBE: Tube = Tube { layers: [Color::Empty, Color::Empty, Color::Empty, Color::Empty] };
 
 struct TubeTransferResult {
     success: bool, 
@@ -47,11 +116,17 @@ struct TubeTransferResult {
 /// tubes will be the next elements repectively. If the transfer fails the Success flag 
 /// will be false and no guarentees are made to the content of the Tubes
 fn transfer(send: Tube, recieve: Tube) -> TubeTransferResult {
+    // Fail because send tube is empty
     if send.isempty() {
         return TubeTransferResult { success: false, send_tube: send, recieve_tube: recieve };
-    } else {
-        return TubeTransferResult { success: true, send_tube: recieve, recieve_tube: send };
     }
+    let (color_count, color) = send.topcolor();
+    let new_send = send.pourtube();
+    let (recv_success, new_recv) = recieve.addcolor(color_count, color);
+    if !recv_success {
+        return TubeTransferResult { success: false, send_tube: send, recieve_tube: recieve };
+    }
+    return TubeTransferResult { success: true, send_tube: new_send, recieve_tube: new_recv };
 }
 
 #[cfg(test)]
@@ -60,8 +135,8 @@ mod transfer_tests {
 
     #[test]
     fn test_empty_transfer() {
-        let tube1 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-        let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube1 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube2 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
         let transfer_success = transfer_result.success;
         assert_eq!(transfer_success, false);
@@ -69,8 +144,8 @@ mod transfer_tests {
 
     #[test]
     fn test_half_to_empty_transfer() {
-        let tube1 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
-        let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube1 = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube2 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
         assert_eq!(transfer_result.success, true);
         assert_eq!(transfer_result.send_tube, tube2);
@@ -79,20 +154,19 @@ mod transfer_tests {
 
     #[test]
     fn test_empty_to_half_transfer() {
-        let tube1 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-        let tube2 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube1 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube2 = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
         assert_eq!(transfer_result.success, false);
     }
 
     #[test]
-    #[ignore]
     fn test_orange_to_blue_transfer() {
-        let tube1 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
-        let tube2 = Tube(Color::Blue, Color::Blue, Color::Empty, Color::Empty);
+        let tube1 = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube2 = Tube::new(Color::Blue, Color::Blue, Color::Empty, Color::Empty);
         let transfer_result = transfer(tube1, tube2);
-        let ee_tube = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
-        let bo_tube = Tube(Color::Blue, Color::Blue, Color::Orange, Color::Orange);
+        let ee_tube = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let bo_tube = Tube::new(Color::Blue, Color::Blue, Color::Orange, Color::Orange);
         assert_eq!(transfer_result.success, true);
         assert_eq!(transfer_result.send_tube, ee_tube);
         assert_eq!(transfer_result.recieve_tube, bo_tube);
@@ -128,8 +202,8 @@ mod neighbors_tests {
 
     #[test]
     fn test_half_and_empty_neighbors() {
-        let tube1 = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
-        let tube2 = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let tube1 = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let tube2 = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let state = vec![tube1, tube2];
         let neighboring_states = neighbors(state);
         let expected_state = vec![tube2, tube1];
@@ -138,15 +212,14 @@ mod neighbors_tests {
     }
 
     #[test]
-    #[ignore]
     fn test_neighbors_3_tubes() {
-        let oe_tube = Tube(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
-        let be_tube = Tube(Color::Blue, Color::Blue, Color::Empty, Color::Empty);
-        let ee_tube = Tube(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
+        let oe_tube = Tube::new(Color::Orange, Color::Orange, Color::Empty, Color::Empty);
+        let be_tube = Tube::new(Color::Blue, Color::Blue, Color::Empty, Color::Empty);
+        let ee_tube = Tube::new(Color::Empty, Color::Empty, Color::Empty, Color::Empty);
         let state = vec![oe_tube, be_tube, ee_tube];
         let neighboring_states = neighbors(state);
-        let bo_tube = Tube(Color::Blue, Color::Blue, Color::Orange, Color::Orange);
-        let ob_tube = Tube(Color::Orange, Color::Orange, Color::Blue, Color::Blue);
+        let bo_tube = Tube::new(Color::Blue, Color::Blue, Color::Orange, Color::Orange);
+        let ob_tube = Tube::new(Color::Orange, Color::Orange, Color::Blue, Color::Blue);
         let expected_state1 = vec![ee_tube, bo_tube, ee_tube];
         let expected_state2 = vec![ee_tube, be_tube, oe_tube];
         let expected_state3 = vec![ob_tube, ee_tube, ee_tube];
