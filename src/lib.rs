@@ -1,9 +1,11 @@
+use colored::*;
+use serde_derive::Deserialize;
 use std::collections::VecDeque;
 use std::fmt;
-use colored::*;
 
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
 pub enum LiquidColor {
     Empty,
     Orange,
@@ -11,14 +13,13 @@ pub enum LiquidColor {
     Red,
 }
 
-// used for setting the color in the debug formatter
-impl fmt::Display for LiquidColor {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl LiquidColor {
+    fn to_colored_color(&self) -> Color {
         match self {
-            LiquidColor::Empty => write!(f, "black"),
-            LiquidColor::Orange => write!(f, "yellow"),
-            LiquidColor::Blue => write!(f, "blue"),
-            LiquidColor::Red => write!(f, "red"),
+            LiquidColor::Empty => { return Color::Black; }
+            LiquidColor::Orange => { return Color::TrueColor { r: 0xe8, g: 0x8c, b: 0x42 }; }
+            LiquidColor::Blue => { return Color::TrueColor { r: 0x3a, g: 0x2e, b: 0xc3 }; }
+            LiquidColor::Red => { return Color::TrueColor { r: 0xc5, g: 0x2a, b: 0x23 }; }
         }
     }
 }
@@ -136,6 +137,14 @@ impl Tube {
         }
         return (true, new_tube);
     }
+
+    pub fn from_vec(vec: Vec<LiquidColor>) -> Tube {
+        assert!(vec.len() <= 4, "Too many colors to create a valid tube! You provided {} colors when the max is 4.", vec.len());
+        let mut new_vec = vec.clone();
+        new_vec.reverse();
+        new_vec.resize(4, LiquidColor::Empty);
+        return Tube::new(new_vec[0], new_vec[1], new_vec[2], new_vec[3]);
+    }
 }
 
 pub const EMPTY_TUBE: Tube = Tube { layers: [LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Empty] };
@@ -219,7 +228,18 @@ pub struct TransferAction {
     recv_idx: i32,
 }
 
-#[derive(PartialEq, Clone)]
+impl fmt::Display for TransferAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "pour tube {} into tube {}", self.send_idx, self.recv_idx)
+    }
+}
+
+#[derive(Deserialize)]
+pub struct TubeArray {
+    tubes: Vec<Vec<LiquidColor>>
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct TubeState {
     pub tubes: Vec<Tube>,
 }
@@ -233,20 +253,30 @@ impl TubeState {
         }
         return true;
     }
+
+    pub fn from_tube_array(tube_array: TubeArray) -> TubeState {
+        let mut tube_vector = Vec::new();
+        for color_vec in tube_array.tubes {
+            tube_vector.push(Tube::from_vec(color_vec));
+        }
+        return TubeState { tubes: tube_vector };
+    }
 }
 
-impl fmt::Debug for TubeState {
+impl fmt::Display for TubeState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut text_lines = Vec::new();
-        for _ in 0..4 { text_lines.push(String::from("  ")) }
+        for _ in 0..4 { text_lines.push(String::from(" ")) }
+        let mut ti = 0;
         for mut t in self.tubes.clone() {
             for (i, l) in t.layers.iter_mut().enumerate() {
-                text_lines[i].push_str(&"||  ".color(l.to_string()).to_string());
+                let label = if i == 3 { ti.to_string() } else { String::from(" ") };
+                text_lines[i].push_str(&label);
+                text_lines[i].push_str(&"||  ".color(l.to_colored_color()).to_string());
             }
+            ti += 1;
         }
-        let mut title = String::from("--Tubes--");
-        title.push_str(&"-".repeat((1.max(text_lines[0].len() as i32 - 8 as i32)) as usize));
-        write!(f, "{}\n{}\n{}\n{}\n{}\n", title, text_lines[0], text_lines[1], text_lines[2], text_lines[3])
+        write!(f, "{}\n{}\n{}\n{}\n", text_lines[0], text_lines[1], text_lines[2], text_lines[3])
     }
 }
 
@@ -325,12 +355,12 @@ mod neighbors_tests {
 }
 
 pub struct TubeStateNode {
-    actions: Vec<TransferAction>,
-    state: TubeState,
+    pub actions: Vec<TransferAction>,
+    pub state: TubeState,
 }
 
 /// Solves the game of tubes using bfs
-pub fn solve_bfs(initial_state: &TubeState) -> Vec<TransferAction> {
+pub fn solve_bfs(initial_state: &TubeState) -> TubeStateNode {
     let mut explored: Vec<TubeState> = Vec::new();
     let mut q: VecDeque<TubeStateNode> = VecDeque::new();
     explored.push(initial_state.clone());
@@ -361,12 +391,12 @@ pub fn solve_bfs(initial_state: &TubeState) -> Vec<TransferAction> {
     }
     match solution_state {
         None => {
-            return vec![TransferAction {send_idx: 0, recv_idx: 0}];
+            return TubeStateNode { actions: vec![TransferAction {send_idx: 0, recv_idx: 0}], state: TubeState { tubes: vec![] } } ;
         },
         Some(solution) => {
             let mut solution_actions = solution.actions.clone();
             solution_actions.remove(0);
-            return solution_actions;
+            return TubeStateNode { actions: solution_actions, state: solution.state };
         }
     }
 }

@@ -6,4 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "3.0.12", features = ["derive"] }
 colored = "2"
+serde = "1.0.135"
+serde_derive = "1.0.135"
+toml = "0.5.8"

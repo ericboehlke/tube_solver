@@ -1,0 +1,11 @@
+# A 2D arraying containing the starting state of all of the tubes
+# - The colors start at the bottom and end at the top so it is like the
+#   tube is rotated π/2 radians clockwise from what is shown on the app. 
+# - The order of the tubes should be the same as in the app so when the
+#   program says `pour tube 2 into tube 5` you know which tubes it means.
+# - Tubes with fewer than 4 colors will be assumed to be empty on the 
+#   remaining layers.
+tubes = [
+    ['orange'],
+    ['orange', 'orange', 'orange'],
+]
