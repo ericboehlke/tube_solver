@@ -1,0 +1,12 @@
+# The bottom 3 layers of each tube are hidden at the start of
+# the game and are only revealed after clearing the layer on
+# top of them.
+tubes = [
+    ['green', 'orange', 'blue', 'pink'],
+    ['orange', 'green', 'blue', 'pink'],
+    ['pink', 'red', 'orange', 'red'],
+    ['orange', 'pink', 'red', 'blue'],
+    ['green', 'green', 'red', 'blue'],
+    [],
+    [],
+]

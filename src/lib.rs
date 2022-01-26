@@ -11,6 +11,8 @@ pub enum LiquidColor {
     Orange,
     Blue,
     Red,
+    Pink,
+    Green,
 }
 
 impl LiquidColor {
@@ -20,6 +22,8 @@ impl LiquidColor {
             LiquidColor::Orange => { return Color::TrueColor { r: 0xe8, g: 0x8c, b: 0x42 }; }
             LiquidColor::Blue => { return Color::TrueColor { r: 0x3a, g: 0x2e, b: 0xc3 }; }
             LiquidColor::Red => { return Color::TrueColor { r: 0xc5, g: 0x2a, b: 0x23 }; }
+            LiquidColor::Pink => { return Color::TrueColor { r: 0xea, g: 0x5e, b: 0x7b }; }
+            LiquidColor::Green => { return Color::TrueColor { r: 0x62, g: 0xd6, b: 0x7c }; }
         }
     }
 }
