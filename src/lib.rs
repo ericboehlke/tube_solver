@@ -138,12 +138,24 @@ impl Tube {
         return (true, new_tube);
     }
 
+    /// Creates a tube from a Vec
+    /// 
+    /// The lowest liquid in the tube should be listed first in the Vec
+    ///
+    /// ```
+    /// use tubes::LiquidColor;
+    /// use tubes::Tube;
+    /// let expected = Tube::new(LiquidColor::Orange, LiquidColor::Red, LiquidColor::Blue, LiquidColor::Blue);
+    /// let actual = Tube::from_vec(vec![LiquidColor::Orange, LiquidColor::Red, LiquidColor::Blue, LiquidColor::Blue]);
+    /// assert_eq!(expected, actual);
+    /// assert_eq!(actual.topcolor().1, LiquidColor::Blue);
+    /// ```
     pub fn from_vec(vec: Vec<LiquidColor>) -> Tube {
         assert!(vec.len() <= 4, "Too many colors to create a valid tube! You provided {} colors when the max is 4.", vec.len());
         let mut new_vec = vec.clone();
         new_vec.reverse();
         new_vec.resize(4, LiquidColor::Empty);
-        return Tube::new(new_vec[0], new_vec[1], new_vec[2], new_vec[3]);
+        return Tube::new(new_vec[3], new_vec[2], new_vec[1], new_vec[0]);
     }
 }
 
