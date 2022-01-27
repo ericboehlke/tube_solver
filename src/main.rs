@@ -3,6 +3,8 @@ use clap::Parser;
 use toml;
 use std::fs;
 
+mod finder;
+
 #[derive(Parser, Clone)]
 struct Cli {
     #[clap(parse(from_os_str))]
