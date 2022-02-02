@@ -1,7 +1,7 @@
-use tubes::*;
 use clap::Parser;
-use toml;
 use std::fs;
+use toml;
+use tubes::*;
 
 mod finder;
 
