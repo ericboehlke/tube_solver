@@ -12,9 +12,18 @@ pub enum LiquidColor {
     Red,
     Pink,
     Green,
+    WhoKnows(u8, u8, u8),
 }
 
 impl LiquidColor {
+    pub fn new(r: u8, g: u8, b: u8) -> LiquidColor {
+        if r == g && g == b {
+            return LiquidColor::Empty;
+        } else {
+            return LiquidColor::WhoKnows(r, g, b);
+        }
+    }
+
     fn to_colored_color(&self) -> Color {
         match self {
             LiquidColor::Empty => {
@@ -55,13 +64,14 @@ impl LiquidColor {
                     b: 0x7c,
                 };
             }
+            &LiquidColor::WhoKnows(r, g, b) => return Color::TrueColor { r: r, g: g, b: b },
         }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Tube {
-    layers: [LiquidColor; 4],
+    pub layers: [LiquidColor; 4],
 }
 
 impl Tube {

@@ -1,6 +1,7 @@
 use image;
 use imageproc::template_matching;
-use std::path::Path;
+use std::{cmp::Ordering, path::Path};
+use tubes::{LiquidColor, Tube, TubeState};
 
 fn find_local_minima<T>(img: &image::ImageBuffer<image::Luma<T>, Vec<T>>) -> Vec<(u32, u32)>
 where
@@ -137,11 +138,57 @@ fn find_tubes(level_img: &image::RgbImage) -> Vec<(u32, u32)> {
         }
     }
     let minima = lonely_minima(&combined_matched, thresholded_minima);
-    return minima;
+    let mut adjusted_minima = Vec::new();
+    for (x, y) in minima {
+        adjusted_minima.push((x + 15, y + 30));
+    }
+    return adjusted_minima;
+}
+
+fn point_cmp(a: &(u32, u32), b: &(u32, u32)) -> Ordering {
+    let a = (a.0 as i32, a.1 as i32);
+    let b = (b.0 as i32, b.1 as i32);
+    if (a.1 - b.1).abs() <= 3 {
+        if a.0 > b.0 {
+            return Ordering::Greater;
+        } else if a.0 < b.0 {
+            return Ordering::Less;
+        } else {
+            return Ordering::Equal;
+        }
+    } else if a.1 > b.1 {
+        return Ordering::Greater;
+    } else {
+        return Ordering::Less;
+    }
+}
+
+fn extract_tube_colors(level_img: &image::RgbImage, tube_centers: Vec<(u32, u32)>) -> TubeState {
+    let mut tube_centers = tube_centers.clone();
+    tube_centers.sort_by(|a, b| point_cmp(a, b));
+    let color_spacing = 11;
+    let mut tubes = Vec::new();
+    let mut new_level_img = level_img.clone();
+    for (x, y) in tube_centers {
+        let mut tube_colors = Vec::new();
+        for layer in [2, 1, 0, -1] {
+            let dy = layer * color_spacing as i32;
+            println!("{}, {}", x, y as i32 + dy);
+            let color = level_img.get_pixel(x, (y as i32 + dy) as u32);
+            new_level_img.put_pixel(x, (y as i32 + dy) as u32, image::Rgb([255, 0, 0]));
+            let liquid_color = LiquidColor::new(color[0], color[1], color[2]);
+            tube_colors.push(liquid_color);
+        }
+        tubes.push(Tube::from_vec(tube_colors));
+    }
+    let _ = new_level_img.save("tube_color_locations.png");
+    return TubeState { tubes };
 }
 
 #[cfg(test)]
 mod matching_tests {
+    use tubes::EMPTY_TUBE;
+
     use super::*;
 
     #[test]
@@ -151,7 +198,7 @@ mod matching_tests {
         // let _ = level_img.save("level.png");
         let minima = find_tubes(&level_img);
         for c in minima {
-            level_img.put_pixel(c.0 + 15, c.1 + 32, image::Rgb([255, 0, 0]));
+            level_img.put_pixel(c.0, c.1, image::Rgb([255, 0, 0]));
             println!("{:?}", c);
         }
         let _ = level_img.save("result_level_5.png");
@@ -160,13 +207,37 @@ mod matching_tests {
     #[test]
     fn test_match_tube_level_8() {
         let level_img = image::open(&Path::new("screenshots/level8.png")).unwrap();
-        let mut level_img = crop_level(&level_img);
+        let level_img = crop_level(&level_img);
         // let _ = level_img.save("level.png");
-        let minima = find_tubes(&level_img);
-        for c in minima {
-            level_img.put_pixel(c.0 + 15, c.1 + 32, image::Rgb([255, 0, 0]));
+        let tube_centers = find_tubes(&level_img);
+        let mut display_level_img = level_img.clone();
+        // let _ = level_img.save("level.png");
+        for c in &tube_centers {
+            display_level_img.put_pixel(c.0, c.1, image::Rgb([255, 0, 0]));
             println!("{:?}", c);
         }
-        let _ = level_img.save("result_level_8.png");
+        let _ = display_level_img.save("result_level_8.png");
+        let tubes = extract_tube_colors(&level_img, tube_centers.clone());
+        println!("{}", tubes);
+        for i in &tubes.tubes {
+            for c in i.layers {
+                println!("{:?}", c);
+            }
+        }
+        let green = LiquidColor::WhoKnows(129, 211, 133);
+        let orange = LiquidColor::WhoKnows(219, 144, 81);
+        let blue = LiquidColor::WhoKnows(56, 46, 187);
+        let pink = LiquidColor::WhoKnows(217, 103, 124);
+        let red = LiquidColor::WhoKnows(181, 57, 45);
+        let expected_tubes = TubeState { tubes: vec![
+            Tube::new(green, orange, green, blue),
+            Tube::new(orange, pink, pink, orange),
+            Tube::new(pink, red, blue, red),
+            Tube::new(blue, red, green, pink),
+            Tube::new(blue, green, red, orange),
+            EMPTY_TUBE,
+            EMPTY_TUBE,
+        ] };
+        assert_eq!(tubes, expected_tubes);
     }
 }
