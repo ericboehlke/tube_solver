@@ -1,1 +1,3 @@
 /target
+*.png
+!screenshots/*.png

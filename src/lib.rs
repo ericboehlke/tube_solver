@@ -1,10 +1,9 @@
 use colored::*;
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt;
 
-#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LiquidColor {
     Empty,
     Orange,
@@ -12,7 +11,40 @@ pub enum LiquidColor {
     Red,
     Pink,
     Green,
-    WhoKnows(u8, u8, u8),
+    Other(String),
+}
+
+impl serde::Serialize for LiquidColor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        serializer.serialize_str(match *self {
+            LiquidColor::Empty => "empty",
+            LiquidColor::Orange => "orange",
+            LiquidColor::Blue => "blue",
+            LiquidColor::Red => "red",
+            LiquidColor::Pink => "pink",
+            LiquidColor::Green => "green",
+            LiquidColor::Other(ref other) => other,
+        })
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for LiquidColor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: serde::Deserializer<'de>
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(match s.as_str() {
+            "empty" => LiquidColor::Empty,
+            "orange" => LiquidColor::Orange,
+            "blue" => LiquidColor::Blue,
+            "red" => LiquidColor::Red,
+            "pink" => LiquidColor::Pink,
+            "green" => LiquidColor::Green,
+            _ => LiquidColor::Other(s),
+        })
+    }
 }
 
 impl LiquidColor {
@@ -20,12 +52,12 @@ impl LiquidColor {
         if r == g && g == b {
             return LiquidColor::Empty;
         } else {
-            return LiquidColor::WhoKnows(r, g, b);
+            return LiquidColor::Other(hex::encode([r, g, b]));
         }
     }
 
     fn to_colored_color(&self) -> Color {
-        match self {
+        match &self {
             LiquidColor::Empty => {
                 return Color::Black;
             }
@@ -64,12 +96,16 @@ impl LiquidColor {
                     b: 0x7c,
                 };
             }
-            &LiquidColor::WhoKnows(r, g, b) => return Color::TrueColor { r: r, g: g, b: b },
+            &LiquidColor::Other(hex_color) => {
+                let mut rgb = [0u8; 3];
+                let _ = hex::decode_to_slice(hex_color, &mut rgb as &mut [u8]);
+                return Color::TrueColor { r: rgb[0], g: rgb[1], b: rgb[2] }
+            },
         }
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Tube {
     pub layers: [LiquidColor; 4],
 }
@@ -106,8 +142,8 @@ impl Tube {
 
     fn checkrep(&self) -> bool {
         let mut non_empty_flag = false;
-        for layer in self.layers {
-            if layer != LiquidColor::Empty {
+        for layer in &self.layers {
+            if layer != &LiquidColor::Empty {
                 non_empty_flag = true;
             } else {
                 if non_empty_flag {
@@ -131,13 +167,13 @@ impl Tube {
     pub fn topcolor(&self) -> (i32, LiquidColor) {
         let mut top_color = LiquidColor::Empty;
         let mut color_count = 0;
-        for layer in self.layers {
-            if layer != LiquidColor::Empty {
+        for layer in &self.layers {
+            if layer != &LiquidColor::Empty {
                 if top_color == LiquidColor::Empty {
-                    top_color = layer;
+                    top_color = layer.clone();
                     color_count += 1;
                 } else {
-                    if layer == top_color {
+                    if layer == &top_color {
                         color_count += 1;
                     } else {
                         break;
@@ -150,8 +186,8 @@ impl Tube {
 
     pub fn howempty(&self) -> i32 {
         let mut empty_count = 0;
-        for layer in self.layers {
-            if layer == LiquidColor::Empty {
+        for layer in &self.layers {
+            if layer == &LiquidColor::Empty {
                 empty_count += 1;
             } else {
                 break;
@@ -167,7 +203,7 @@ impl Tube {
     }
 
     pub fn pourtube(&self) -> Tube {
-        let mut new_tube = *self;
+        let mut new_tube = self.clone();
         let (color_count, _color) = self.topcolor();
         let empty_count = self.howempty();
         for i in empty_count..empty_count + color_count {
@@ -182,9 +218,9 @@ impl Tube {
         if color_count > empty_count {
             return (false, EMPTY_TUBE);
         }
-        let mut new_tube = *self;
+        let mut new_tube = self.clone();
         for i in empty_count - color_count..empty_count {
-            new_tube.layers[i as usize] = color;
+            new_tube.layers[i as usize] = color.clone();
         }
         return (true, new_tube);
     }
@@ -210,7 +246,11 @@ impl Tube {
         let mut new_vec = vec.clone();
         new_vec.reverse();
         new_vec.resize(4, LiquidColor::Empty);
-        return Tube::new(new_vec[3], new_vec[2], new_vec[1], new_vec[0]);
+        return Tube::new(new_vec[3].clone(), new_vec[2].clone(), new_vec[1].clone(), new_vec[0].clone());
+    }
+
+   pub fn to_vec(&self) -> Vec<LiquidColor> {
+        return Vec::from_iter(self.layers.clone());
     }
 }
 
@@ -309,7 +349,7 @@ mod transfer_tests {
             LiquidColor::Empty,
             LiquidColor::Empty,
         );
-        let transfer_result = transfer(tube1, tube2);
+        let transfer_result = transfer(tube1.clone(), tube2.clone());
         assert_eq!(transfer_result.success, true);
         assert_eq!(transfer_result.send_tube, tube2);
         assert_eq!(transfer_result.recieve_tube, tube1);
@@ -364,7 +404,7 @@ impl fmt::Display for TransferAction {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TubeArray {
     tubes: Vec<Vec<LiquidColor>>,
 }
@@ -390,6 +430,14 @@ impl TubeState {
             tube_vector.push(Tube::from_vec(color_vec));
         }
         return TubeState { tubes: tube_vector };
+    }
+
+    pub fn to_tube_array(&self) -> TubeArray {
+        let mut tube_vector = Vec::new();
+        for tube in &self.tubes {
+            tube_vector.push(tube.to_vec());
+        }
+        return TubeArray { tubes: tube_vector };
     }
 }
 
@@ -442,9 +490,9 @@ mod tube_state_test {
         let state = TubeState {
             tubes: vec![tube1, tube2, tube3],
         };
-        assert!(!tube1.issolved());
-        assert!(!tube2.issolved());
-        assert!(tube3.issolved());
+        assert!(!state.tubes[0].issolved());
+        assert!(!state.tubes[1].issolved());
+        assert!(state.tubes[2].issolved());
         assert!(!state.issolved());
     }
 }
@@ -462,7 +510,7 @@ pub fn neighbors(state: &TubeState) -> Vec<(TransferAction, TubeState)> {
             if si == ri {
                 continue;
             };
-            let transfer_result = transfer(*send_tube, *recv_tube);
+            let transfer_result = transfer(send_tube.clone(), recv_tube.clone());
             if transfer_result.success {
                 let mut neighboring_state = state.clone();
                 neighboring_state.tubes[si] = transfer_result.send_tube;
@@ -499,7 +547,7 @@ mod neighbors_tests {
             LiquidColor::Empty,
         );
         let state = TubeState {
-            tubes: vec![tube1, tube2],
+            tubes: vec![tube1.clone(), tube2.clone()],
         };
         let neighboring_states = neighbors(&state);
         let expected_state = TubeState {
@@ -534,14 +582,14 @@ mod neighbors_tests {
             LiquidColor::Empty,
         );
         let state = TubeState {
-            tubes: vec![oe_tube, be_tube, ee_tube],
+            tubes: vec![oe_tube.clone(), be_tube.clone(), ee_tube.clone()],
         };
         let neighboring_states = neighbors(&state);
         let expected_state2 = TubeState {
-            tubes: vec![ee_tube, be_tube, oe_tube],
+            tubes: vec![ee_tube.clone(), be_tube.clone(), oe_tube.clone()],
         };
         let expected_state4 = TubeState {
-            tubes: vec![oe_tube, ee_tube, be_tube],
+            tubes: vec![oe_tube.clone(), ee_tube.clone(), be_tube.clone()],
         };
         let transfer_action2 = TransferAction {
             send_idx: 0,

@@ -61,7 +61,7 @@ where
     return local_minima;
 }
 
-fn crop_level(level_img: &image::DynamicImage) -> image::RgbImage {
+pub fn crop_level(level_img: &image::DynamicImage) -> image::RgbImage {
     let level_img = level_img.to_rgb8();
     let top_crop_ratio = 0.25;
     let bot_crop_ratio = 0.15;
@@ -96,7 +96,7 @@ fn preprocess_tube(tube_img: &image::DynamicImage) -> image::GrayImage {
     return tube_img;
 }
 
-fn find_tubes(level_img: &image::RgbImage) -> Vec<(u32, u32)> {
+pub fn find_tubes(level_img: &image::RgbImage) -> Vec<(u32, u32)> {
     let level_img = image::DynamicImage::ImageRgb8(level_img.clone()).to_luma8();
     let full_tube_img = image::open(&Path::new("screenshots/full_tube.png")).unwrap();
     let full_tube_img = preprocess_tube(&full_tube_img);
@@ -163,7 +163,7 @@ fn point_cmp(a: &(u32, u32), b: &(u32, u32)) -> Ordering {
     }
 }
 
-fn extract_tube_colors(level_img: &image::RgbImage, tube_centers: Vec<(u32, u32)>) -> TubeState {
+pub fn extract_tube_colors(level_img: &image::RgbImage, tube_centers: Vec<(u32, u32)>) -> TubeState {
     let mut tube_centers = tube_centers.clone();
     tube_centers.sort_by(|a, b| point_cmp(a, b));
     let color_spacing = 11;
@@ -173,7 +173,6 @@ fn extract_tube_colors(level_img: &image::RgbImage, tube_centers: Vec<(u32, u32)
         let mut tube_colors = Vec::new();
         for layer in [2, 1, 0, -1] {
             let dy = layer * color_spacing as i32;
-            println!("{}, {}", x, y as i32 + dy);
             let color = level_img.get_pixel(x, (y as i32 + dy) as u32);
             new_level_img.put_pixel(x, (y as i32 + dy) as u32, image::Rgb([255, 0, 0]));
             let liquid_color = LiquidColor::new(color[0], color[1], color[2]);
@@ -220,24 +219,27 @@ mod matching_tests {
         let tubes = extract_tube_colors(&level_img, tube_centers.clone());
         println!("{}", tubes);
         for i in &tubes.tubes {
-            for c in i.layers {
+            for c in &i.layers {
                 println!("{:?}", c);
             }
         }
-        let green = LiquidColor::WhoKnows(129, 211, 133);
-        let orange = LiquidColor::WhoKnows(219, 144, 81);
-        let blue = LiquidColor::WhoKnows(56, 46, 187);
-        let pink = LiquidColor::WhoKnows(217, 103, 124);
-        let red = LiquidColor::WhoKnows(181, 57, 45);
-        let expected_tubes = TubeState { tubes: vec![
-            Tube::new(green, orange, green, blue),
-            Tube::new(orange, pink, pink, orange),
-            Tube::new(pink, red, blue, red),
-            Tube::new(blue, red, green, pink),
-            Tube::new(blue, green, red, orange),
-            EMPTY_TUBE,
-            EMPTY_TUBE,
-        ] };
+        let green = LiquidColor::new(129, 211, 133);
+        let orange = LiquidColor::new(219, 144, 81);
+        let blue = LiquidColor::new(56, 46, 187);
+        let pink = LiquidColor::new(217, 103, 124);
+        let red = LiquidColor::new(181, 57, 45);
+        let expected_tubes = TubeState {
+            tubes: vec![
+                Tube::new(green.clone(), orange.clone(), green.clone(), blue.clone()),
+                Tube::new(orange.clone(), pink.clone(), pink.clone(), orange.clone()),
+                Tube::new(pink.clone(), red.clone(), blue.clone(), red.clone()),
+                Tube::new(blue.clone(), red.clone(), green.clone(), pink.clone()),
+                Tube::new(blue.clone(), green.clone(), red.clone(), orange.clone()),
+                EMPTY_TUBE,
+                EMPTY_TUBE,
+            ],
+        };
         assert_eq!(tubes, expected_tubes);
+        println!("{}", toml::to_string(&tubes.to_tube_array()).unwrap())
     }
 }
