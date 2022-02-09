@@ -1,7 +1,7 @@
 use clap::{AppSettings, Parser, Subcommand};
 use std::fs;
-use std::path::Path;
 use std::io::Write;
+use std::path::Path;
 use tubes::*;
 
 mod finder;
@@ -33,7 +33,7 @@ enum Commands {
 fn main() {
     let args = Cli::parse();
     match &args.command {
-        Commands::Solve { tubes_file_path} => {
+        Commands::Solve { tubes_file_path } => {
             let filepath = tubes_file_path.as_os_str().to_str().unwrap();
             let contents = fs::read_to_string(tubes_file_path.clone())
                 .expect("Something went wrong while reading the file");
@@ -51,8 +51,10 @@ fn main() {
             println!("-- Solved State -------------\n");
             println!("{}", solved_state.state);
         }
-        Commands::Scan { tubes_image_path, tubes_output_file_path} => {
-            println!("scanning");
+        Commands::Scan {
+            tubes_image_path,
+            tubes_output_file_path,
+        } => {
             let level_img = image::open(&Path::new(tubes_image_path)).unwrap();
             let level_img = finder::crop_level(&level_img);
             let tube_centers = finder::find_tubes(&level_img);

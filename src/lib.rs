@@ -16,7 +16,8 @@ pub enum LiquidColor {
 
 impl serde::Serialize for LiquidColor {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer
+    where
+        S: serde::Serializer,
     {
         serializer.serialize_str(match *self {
             LiquidColor::Empty => "empty",
@@ -32,7 +33,8 @@ impl serde::Serialize for LiquidColor {
 
 impl<'de> serde::Deserialize<'de> for LiquidColor {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: serde::Deserializer<'de>
+    where
+        D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
         Ok(match s.as_str() {
@@ -99,8 +101,12 @@ impl LiquidColor {
             &LiquidColor::Other(hex_color) => {
                 let mut rgb = [0u8; 3];
                 let _ = hex::decode_to_slice(hex_color, &mut rgb as &mut [u8]);
-                return Color::TrueColor { r: rgb[0], g: rgb[1], b: rgb[2] }
-            },
+                return Color::TrueColor {
+                    r: rgb[0],
+                    g: rgb[1],
+                    b: rgb[2],
+                };
+            }
         }
     }
 }
@@ -117,7 +123,7 @@ impl Tube {
     /// use tubes::LiquidColor;
     /// use tubes::Tube;
     /// let empty_tube = Tube::new(LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Empty);
-    /// let half_tube = Tube::new(LiquidColor::Orange, LiquidColor::Orange, LiquidColor::Empty, LiquidColor::Empty);
+    /// let half_tube = Tube::new(LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Orange, LiquidColor::Orange);
     /// assert_eq!(empty_tube.isempty(), true);
     /// assert_eq!(half_tube.isempty(), false);
     /// ```
@@ -126,10 +132,10 @@ impl Tube {
     }
 
     pub fn new(
-        layer0: LiquidColor,
-        layer1: LiquidColor,
-        layer2: LiquidColor,
         layer3: LiquidColor,
+        layer2: LiquidColor,
+        layer1: LiquidColor,
+        layer0: LiquidColor,
     ) -> Tube {
         let new_tube = Tube {
             layers: [layer3, layer2, layer1, layer0],
@@ -144,7 +150,7 @@ impl Tube {
         let mut non_empty_flag = false;
         for layer in &self.layers {
             if layer != &LiquidColor::Empty {
-                non_empty_flag = true;
+                non_empty_flag = false;
             } else {
                 if non_empty_flag {
                     return false;
@@ -159,8 +165,8 @@ impl Tube {
     /// ```
     /// use tubes::LiquidColor;
     /// use tubes::Tube;
-    /// let tube1 = Tube::new(LiquidColor::Orange, LiquidColor::Blue, LiquidColor::Orange, LiquidColor::Blue);
-    /// let tube2 = Tube::new(LiquidColor::Orange, LiquidColor::Orange, LiquidColor::Blue, LiquidColor::Blue);
+    /// let tube1 = Tube::new(LiquidColor::Blue, LiquidColor::Orange, LiquidColor::Blue, LiquidColor::Orange);
+    /// let tube2 = Tube::new(LiquidColor::Blue, LiquidColor::Blue, LiquidColor::Orange, LiquidColor::Orange);
     /// assert_eq!(tube1.topcolor(), (1, LiquidColor::Blue));
     /// assert_eq!(tube2.topcolor(), (2, LiquidColor::Blue));
     /// ```
@@ -232,10 +238,15 @@ impl Tube {
     /// ```
     /// use tubes::LiquidColor;
     /// use tubes::Tube;
-    /// let expected = Tube::new(LiquidColor::Orange, LiquidColor::Red, LiquidColor::Blue, LiquidColor::Blue);
-    /// let actual = Tube::from_vec(vec![LiquidColor::Orange, LiquidColor::Red, LiquidColor::Blue, LiquidColor::Blue]);
+    /// let expected = Tube::new(LiquidColor::Blue, LiquidColor::Blue, LiquidColor::Red, LiquidColor::Orange);
+    /// let actual = Tube::from_vec(vec![LiquidColor::Blue, LiquidColor::Blue, LiquidColor::Red, LiquidColor::Orange]);
     /// assert_eq!(expected, actual);
     /// assert_eq!(actual.topcolor().1, LiquidColor::Blue);
+    /// let expected_short = Tube::new(LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Orange);
+    /// let actual_short = Tube::from_vec(vec![LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Empty, LiquidColor::Orange]);
+    /// assert_eq!(expected_short, actual_short);
+    /// assert_eq!(actual_short.howempty(), 3);
+    /// assert_eq!(actual_short.topcolor().1, LiquidColor::Orange);
     /// ```
     pub fn from_vec(vec: Vec<LiquidColor>) -> Tube {
         assert!(
@@ -246,10 +257,15 @@ impl Tube {
         let mut new_vec = vec.clone();
         new_vec.reverse();
         new_vec.resize(4, LiquidColor::Empty);
-        return Tube::new(new_vec[3].clone(), new_vec[2].clone(), new_vec[1].clone(), new_vec[0].clone());
+        return Tube::new(
+            new_vec[3].clone(),
+            new_vec[2].clone(),
+            new_vec[1].clone(),
+            new_vec[0].clone(),
+        );
     }
 
-   pub fn to_vec(&self) -> Vec<LiquidColor> {
+    pub fn to_vec(&self) -> Vec<LiquidColor> {
         return Vec::from_iter(self.layers.clone());
     }
 }
@@ -338,10 +354,10 @@ mod transfer_tests {
     #[test]
     fn test_half_to_empty_transfer() {
         let tube1 = Tube::new(
-            LiquidColor::Orange,
-            LiquidColor::Orange,
             LiquidColor::Empty,
             LiquidColor::Empty,
+            LiquidColor::Orange,
+            LiquidColor::Orange,
         );
         let tube2 = Tube::new(
             LiquidColor::Empty,
@@ -364,10 +380,10 @@ mod transfer_tests {
             LiquidColor::Empty,
         );
         let tube2 = Tube::new(
-            LiquidColor::Orange,
-            LiquidColor::Orange,
             LiquidColor::Empty,
             LiquidColor::Empty,
+            LiquidColor::Orange,
+            LiquidColor::Orange,
         );
         let transfer_result = transfer(tube1, tube2);
         assert_eq!(transfer_result.success, false);
@@ -376,16 +392,16 @@ mod transfer_tests {
     #[test]
     fn test_orange_to_blue_transfer() {
         let tube1 = Tube::new(
-            LiquidColor::Orange,
-            LiquidColor::Orange,
             LiquidColor::Empty,
             LiquidColor::Empty,
+            LiquidColor::Orange,
+            LiquidColor::Orange,
         );
         let tube2 = Tube::new(
-            LiquidColor::Blue,
-            LiquidColor::Blue,
             LiquidColor::Empty,
             LiquidColor::Empty,
+            LiquidColor::Blue,
+            LiquidColor::Blue,
         );
         let transfer_result = transfer(tube1, tube2);
         assert_eq!(transfer_result.success, false);
@@ -475,16 +491,16 @@ mod tube_state_test {
     #[test]
     fn test_level_2_issolved() {
         let tube1 = Tube::new(
-            LiquidColor::Blue,
             LiquidColor::Orange,
             LiquidColor::Blue,
             LiquidColor::Orange,
+            LiquidColor::Blue,
         );
         let tube2 = Tube::new(
-            LiquidColor::Orange,
             LiquidColor::Blue,
             LiquidColor::Orange,
             LiquidColor::Blue,
+            LiquidColor::Orange,
         );
         let tube3 = EMPTY_TUBE;
         let state = TubeState {
@@ -535,10 +551,10 @@ mod neighbors_tests {
     #[test]
     fn test_half_and_empty_neighbors() {
         let tube1 = Tube::new(
-            LiquidColor::Orange,
-            LiquidColor::Orange,
             LiquidColor::Empty,
             LiquidColor::Empty,
+            LiquidColor::Orange,
+            LiquidColor::Orange,
         );
         let tube2 = Tube::new(
             LiquidColor::Empty,
@@ -564,16 +580,16 @@ mod neighbors_tests {
     #[test]
     fn test_neighbors_3_tubes() {
         let oe_tube = Tube::new(
-            LiquidColor::Orange,
-            LiquidColor::Orange,
             LiquidColor::Empty,
             LiquidColor::Empty,
+            LiquidColor::Orange,
+            LiquidColor::Orange,
         );
         let be_tube = Tube::new(
-            LiquidColor::Blue,
-            LiquidColor::Blue,
             LiquidColor::Empty,
             LiquidColor::Empty,
+            LiquidColor::Blue,
+            LiquidColor::Blue,
         );
         let ee_tube = Tube::new(
             LiquidColor::Empty,

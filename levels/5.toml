@@ -2,11 +2,11 @@
 # the game and are only revealed after clearing the layer on
 # top of them.
 tubes = [
-    ['green', 'orange', 'blue', 'pink'],
-    ['orange', 'green', 'blue', 'pink'],
-    ['pink', 'red', 'orange', 'red'],
-    ['orange', 'pink', 'red', 'blue'],
-    ['green', 'green', 'red', 'blue'],
+    ['pink', 'blue', 'orange', 'green'],
+    ['pink', 'blue', 'green', 'orange'],
+    ['red', 'orange', 'red', 'pink'],
+    ['blue', 'red', 'pink', 'orange'],
+    ['blue', 'red', 'green', 'green'],
     [],
     [],
 ]

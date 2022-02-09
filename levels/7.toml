@@ -1,9 +1,9 @@
 tubes = [
-    ['green', 'orange', 'red', 'orange'],
-    ['blue', 'blue', 'red', 'orange'],
-    ['pink', 'pink', 'blue', 'orange'],
-    ['green', 'pink', 'red', 'blue'],
-    ['green', 'red', 'green', 'pink'],
+    ['orange', 'red', 'orange', 'green'],
+    ['orange', 'red', 'blue', 'blue'],
+    ['orange', 'blue', 'pink', 'pink'],
+    ['blue', 'red', 'pink', 'green'],
+    ['pink', 'green', 'red', 'green'],
     [],
     [],
 ]

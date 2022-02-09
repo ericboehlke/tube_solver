@@ -163,7 +163,10 @@ fn point_cmp(a: &(u32, u32), b: &(u32, u32)) -> Ordering {
     }
 }
 
-pub fn extract_tube_colors(level_img: &image::RgbImage, tube_centers: Vec<(u32, u32)>) -> TubeState {
+pub fn extract_tube_colors(
+    level_img: &image::RgbImage,
+    tube_centers: Vec<(u32, u32)>,
+) -> TubeState {
     let mut tube_centers = tube_centers.clone();
     tube_centers.sort_by(|a, b| point_cmp(a, b));
     let color_spacing = 11;
@@ -171,7 +174,7 @@ pub fn extract_tube_colors(level_img: &image::RgbImage, tube_centers: Vec<(u32, 
     let mut new_level_img = level_img.clone();
     for (x, y) in tube_centers {
         let mut tube_colors = Vec::new();
-        for layer in [2, 1, 0, -1] {
+        for layer in [-1, 0, 1, 2] {
             let dy = layer * color_spacing as i32;
             let color = level_img.get_pixel(x, (y as i32 + dy) as u32);
             new_level_img.put_pixel(x, (y as i32 + dy) as u32, image::Rgb([255, 0, 0]));
@@ -230,11 +233,11 @@ mod matching_tests {
         let red = LiquidColor::new(181, 57, 45);
         let expected_tubes = TubeState {
             tubes: vec![
-                Tube::new(green.clone(), orange.clone(), green.clone(), blue.clone()),
+                Tube::new(blue.clone(), green.clone(), orange.clone(), green.clone()),
                 Tube::new(orange.clone(), pink.clone(), pink.clone(), orange.clone()),
-                Tube::new(pink.clone(), red.clone(), blue.clone(), red.clone()),
-                Tube::new(blue.clone(), red.clone(), green.clone(), pink.clone()),
-                Tube::new(blue.clone(), green.clone(), red.clone(), orange.clone()),
+                Tube::new(red.clone(), blue.clone(), red.clone(), pink.clone()),
+                Tube::new(pink.clone(), green.clone(), red.clone(), blue.clone()),
+                Tube::new(orange.clone(), red.clone(), green.clone(), blue.clone()),
                 EMPTY_TUBE,
                 EMPTY_TUBE,
             ],
